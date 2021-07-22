@@ -9,3 +9,10 @@ devtools::install_github("datasketch/geodata")
 
 devtools::install_github("datasketch/lfltmagic")
 devtools::install_github("datasketch/hgchmagic")
+
+
+data <- datos_siscrimel$spoa_delitos
+data <- data %>% 
+         group_by(code_depto, delitos) %>% 
+          summarise(total = n()) %>% 
+  filter(total == max(total)) 

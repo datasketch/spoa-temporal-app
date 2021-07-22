@@ -18,7 +18,6 @@ style <- "
   min-height: 600px !important;} 
 }
 
-
 .orientation-notice {
  display: none !important;
 }
@@ -151,10 +150,15 @@ background: #0a4a83 !important;
 .button-checkmark {
  display: none;
 }
+
+.leaflet-control-attribution {
+ display: none;
+}
 "
 
 datos_siscrimel <- readRDS("data/all_spoa_data.rds")
-
+dp <- read_csv("data/deptos_conf.csv")
+dp <- dp[-32,]
 ui <- panelsPage(
   disconnectMessage(
     text = "Tu sesión ha finalizado, por favor haz click aquí para recargar vista",
@@ -184,8 +188,8 @@ ui <- panelsPage(
         id = "naranja",
         header_right = downloadImageUI("download", dropdownLabel = "Descarga", formats = c("jpeg", "pdf", "png", "html"), display = "dropdown"),
         can_collapse = FALSE,
-        color = "chardonnay",
-        body = verbatimTextOutput("aver"),# uiOutput("final_viz"), #
+        color = "chardonnay", #div(add_busy_spinner(spin = "fading-circle"),uiOutput("final_viz"))
+        body = uiOutput("final_viz"), #verbatimTextOutput("aver"),#  
         footer =  div(class = "panel-header",
                       uiOutput("viz_icons"), 
                       tags$a(
@@ -370,7 +374,12 @@ server <- function(input, output, session) {
   
   depto_opts <- reactive({
     req(data_select())
-    c("TODOS", sort(unique(data_select()$depto)))
+    viz <- id_viz()
+    data_select <- data.frame(depto = unique(data_select()$depto))
+    data_select <- dp %>% left_join(data_select)
+    c_d <- setNames(data_select$id, data_select$label)
+    if (viz == 'map') c_d <- c("Todos", c_d)
+    c_d
   })
   
   data_filter <- reactive({
@@ -391,7 +400,7 @@ server <- function(input, output, session) {
     
     df <- df %>% filter(anio %in% first_anio:last_anio)
     var_select <- c(id_nivel, "anio", id_rate)
-    if (id_viz != "lines") var_select <- setdiff(var_select, "anio")
+    if (id_viz != "line") var_select <- setdiff(var_select, "anio")
     df <- df[var_select]
     df
     
@@ -401,68 +410,95 @@ server <- function(input, output, session) {
   output$aver <- renderPrint({
     data_filter()
   })
-
+  
   tooltip_info <- reactive({
     #"{name}"
     "Tooltip info"
   })
+  
+  
+  output$map_info <- renderLeaflet({
+    if (is.null(id_viz())) return()
+    if (is.null(input$nivel_territorial)) return()
+    if (id_viz() != "map") return()
+    id_depto <- input$departamentos
+    if (is.null(id_depto)) id_depto <- "Todos"
+    
+    id_map_name <-  "col_departments"
+    if (input$nivel_territorial == "code_mun") id_map_name <- "col_municipalities"
+    num_zoom <- 5
+    if (id_depto != "Todos") {
+      id_map_name <- paste0("col_depto_", id_depto)
+      num_zoom <- 7
+    }
+    delito <- !non_delito()
+    dd <- data_filter()
+    
+    opts_l <- list(map_name = id_map_name,
+                   map_tiles = "Esri.WorldStreetMap",
+                   #map_color_scale = "Bins",
+                   agg = "mean",
+                   #tooltip = tooltip_info(),
+                   legend_position = "bottomleft",
+                   map_min_zoom = num_zoom
+                   )
+    if (delito) {
+      dd <- dd %>% 
+        group_by_all() %>% 
+        summarise(total = n()) %>% 
+        filter(total == max(total))
 
-  # 
-  # output$map_info <- renderLeaflet({
-  #   if (is.null(id_viz())) return()
-  #   if (is.null(input$nivel_territorial)) return()
-  #   if (id_viz() != "map") return()
-  #   
-  #   id_map_name <-  "col_departments"
-  #   if (input$nivel_territorial == "code_mun") id_map_name <- "col_municipalities"
-  #   
-  #   lf <- lfltmagic::lflt_choropleth_GcdNum(data_origin(),
-  #                                           map_name = id_map_name,
-  #                                           #map_tiles = "Esri.WorldStreetMap",
-  #                                           map_color_scale = "Bins",
-  #                                           agg = "mean",
-  #                                           tooltip = tooltip_info(),
-  #                                           legend_position = "topright",
-  #                                           palette_colors =  c("#73fbf3", "#60dbdf", "#4ebdcc", "#3d9fb9", "#2b82a7", "#1a6695", "#0a4a83")) %>%
-  #     setView(lng = -73, lat = 4, zoom = 5)
-  #   
-  #   # if (input$casos_M != "lideres_asesinados") {
-  #   #   lf <- lf %>% addLegendCustom(colors = c("#1549FF", "#1549FF", "#1549FF"), labels = c("<6", "6-15", ">15"), sizes = c(10, 20, 35))
-  #   # }
-  #   lf
-  # })
-  # 
-  # 
-  # output$general_viz <- renderHighchart({
-  #   if (is.null(id_viz())) return()
-  #   #if (is.null(input$nivel_territorial)) return()
-  #   if (id_viz() == "map") return()
-  #   
-  #   viz <- paste0("hgch_", id_viz(),  "_CatNum")
-  #   if (id_viz() == "line") viz <- gsub("CatNum", "CatYeaNum", viz)
-  #   do.call(viz, list(data = data_origin(),
-  #                     orientation = "hor",
-  #                     agg = "mean",
-  #                     ver_label = " ",
-  #                     hor_title = "tasa promedio",
-  #                     palette_colors = c("#0a4a83", "#0ebabe", "#eb5d0b", "#f4b72f", "#27a864")))
-  #   
-  # })
-  # 
-  # 
-  # output$final_viz <- renderUI({
-  #   if (is.null(id_viz())) return()
-  #   if (id_viz() == "map") {
-  #     v <- leafletOutput("map_info")
-  #   } else {
-  #     v <- highchartOutput("general_viz")
-  #   }
-  #   v
-  # })
-  # 
-  # output$text_info <- renderUI({
-  #   "Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
-  # })
+      opts_l <- modifyList(opts_l, list(
+                                        color_by = names(dd)[2],
+                                        map_color_scale = "Category",
+                                        palette_colors_sequential = c("#0a4a83", "#0ebabe", "#eb5d0b", "#f4b72f", "#27a864")
+      ))
+      viz <- "lflt_choropleth_GcdCatNum"
+    } else {
+      viz <- "lflt_choropleth_GcdNum"
+      opts_l <- modifyList(opts_l, list(palette_colors =  c("#73fbf3", "#60dbdf", "#4ebdcc", "#3d9fb9", "#2b82a7", "#1a6695", "#0a4a83")
+      ))
+    }
+    
+    opts_l <- modifyList(opts_l, list(data = dd))
+    lf <- do.call(viz, opts_l)
+    # if (input$casos_M != "lideres_asesinados") {
+    #   lf <- lf %>% addLegendCustom(colors = c("#1549FF", "#1549FF", "#1549FF"), labels = c("<6", "6-15", ">15"), sizes = c(10, 20, 35))
+    # }
+    lf
+  })
+  
+  
+  output$general_viz <- renderHighchart({
+    if (is.null(id_viz())) return()
+    #if (is.null(input$nivel_territorial)) return()
+    if (id_viz() == "map") return()
+    
+    viz <- paste0("hgch_", id_viz(),  "_CatNum")
+    if (id_viz() == "line") viz <- gsub("CatNum", "CatYeaNum", viz)
+    do.call(viz, list(data = data_filter(),
+                      orientation = "hor",
+                      agg = "mean",
+                      ver_label = " ",
+                      hor_title = " ", #reactivo porque depende de los datos
+                      palette_colors = c("#0a4a83", "#0ebabe", "#eb5d0b", "#f4b72f", "#27a864")))
+    
+  })
+  
+  
+  output$final_viz <- renderUI({
+    if (is.null(id_viz())) return()
+    if (id_viz() == "map") {
+      v <- leafletOutput("map_info")
+    } else {
+      v <- highchartOutput("general_viz")
+    }
+    v
+  })
+  
+  output$text_info <- renderUI({
+    "Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
+  })
   
 }
 
