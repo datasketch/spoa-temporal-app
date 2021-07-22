@@ -1,0 +1,11 @@
+devtools::install_github("datasketch/shinypanels")
+devtools::install_github("datasketch/parmesan")
+devtools::install_github("datasketch/shinyinvoer")
+devtools::install_github("datasketch/dsmodules")
+devtools::install_github("datasketch/dsmodules")
+devtools::install_github("datasketch/dsvizprep")
+devtools::install_github("datasketch/dsvizopts")
+devtools::install_github("datasketch/geodata")
+
+devtools::install_github("datasketch/lfltmagic")
+devtools::install_github("datasketch/hgchmagic")

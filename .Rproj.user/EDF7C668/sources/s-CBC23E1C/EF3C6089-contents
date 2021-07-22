@@ -1,0 +1,11 @@
+add_var:
+  label: 
+  inputs:
+    - variables_adicionales
+filtros:
+  label: Filtros
+  inputs:
+    - tipo_censo
+    - nivel_territorial
+    - departamentos
+    - fechas
