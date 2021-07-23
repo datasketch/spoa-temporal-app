@@ -157,8 +157,17 @@ background: #0a4a83 !important;
 "
 
 datos_siscrimel <- readRDS("data/all_spoa_data.rds")
+mcpio_centroids <- read_rds("data/mcpio_centroids.rds")
+depto_centroids <- read_rds("data/deptos_centroids.rds")
 dp <- read_csv("data/deptos_conf.csv")
 dp <- dp[-32,]
+
+addLegendCustom <- function(map, colors, labels, sizes, opacity = 0.8, position ="bottomleft", title = "Líderes asesinados"){
+  colorAdditions <- paste0(colors, "; width:", sizes, "px; height:", sizes, "px;border-radius: 50%;")
+  labelAdditions <- paste0("<div style='display: inline-block;height: ", sizes, "px;margin-top: 4px;line-height: ", sizes, "px;'>", labels, "</div>")
+  return(addLegend(map, colors = colorAdditions, labels = labelAdditions, opacity = opacity, position = position, title = title))
+}
+
 ui <- panelsPage(
   disconnectMessage(
     text = "Tu sesión ha finalizado, por favor haz click aquí para recargar vista",
@@ -468,6 +477,47 @@ server <- function(input, output, session) {
     lf
   })
   
+  other_data <- reactive({
+    if (quest_choose() != "relacion") return()
+    if (is.null(input$variables_adicionales)) return()
+    od <- datos_siscrimel$cultivos_ilicitos %>% select(-depto) %>% drop_na(code_mun)
+    
+    
+    if (input$nivel_territorial == "code_depto") {
+      od <- od %>% group_by(code_depto) %>% summarise(radius = as.numeric(mean(coca, na.rm = T)))
+      od <- od %>% left_join(depto_centroids, by = c("code_depto" = "id"))
+      od$radius[od$name == "HUILA"] <- 0
+     } else {
+      od <- od %>% left_join(mcpio_centroids, by = c("code_mun" = "id"))
+      if (input$departamentos != "Todos") {
+      od <- od %>% filter(depto %in% toupper(input$departamentos))
+      }
+      od <- od %>% select(depto, mcpio, lon, lat, radius = coca)
+      print(od)
+    }
+    
+    od$lon <- as.numeric(od$lon)
+    od$lat <- as.numeric(od$lat)
+    od$radius <- scales::rescale(od$radius, to = c(3, 11))
+    od %>% drop_na(radius)
+  })
+  
+  observe({
+    if (is.null(other_data())) return()
+    
+    leafletProxy("map_info", data = other_data()) %>%
+      clearMarkers() %>% 
+      addCircleMarkers(
+        lng = ~lon,
+        lat = ~lat,
+        radius = ~radius,
+        #label = ~labels,
+        color = "#1549FF",
+        fillOpacity = 1,
+        labelOptions = labelOptions(style = list(`font-weight` = "normal",
+                                                 padding = "3px 8px"), 
+                                    textsize = "13px", direction = "auto"))
+  })
   
   output$general_viz <- renderHighchart({
     if (is.null(id_viz())) return()

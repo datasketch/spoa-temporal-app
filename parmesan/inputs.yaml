@@ -51,6 +51,4 @@ variables_adicionales:
     choices:
       Cultivos ílicitos:
       - cultivos_ilicitos
-      Homicidios:
-      - homicidios 
 
