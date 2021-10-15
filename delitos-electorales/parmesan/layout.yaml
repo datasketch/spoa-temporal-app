@@ -1,0 +1,14 @@
+add_var:
+  label: 
+  inputs:
+    - variables_adicionales
+    - tipo_cultivo
+    - tipo_delito
+    - conduta_delito
+filtros:
+  label: Filtros
+  inputs:
+    - nivel_territorial
+    - departamentos
+    - fechas
+

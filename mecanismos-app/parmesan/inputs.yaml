@@ -1,0 +1,91 @@
+---
+referendo_ly:
+  show: true
+  show_if:
+   referendo_view():
+    equals: true
+  input_type: radioButtons
+  input_params:
+    label: Seleccione vista de interes 
+    choices: referendo_opts()
+departamentos:
+  show: true
+  input_type: selectizeInput
+  input_params:
+    label: Departamento
+    choices: depto_opts()
+municipios:
+  show: true
+  show_if:
+   distinc_ref2003_view():
+    equals: true
+  input_type: selectizeInput
+  input_params:
+    label: Municipios
+    choices: mcpios_opts()
+anio:
+ show: true
+ show_if:
+  referendoHist_view():
+   equals: true
+ input_type: sliderInput
+ input_params:
+   label: Fechas
+   min: 1995
+   max: 2011
+   step: 1
+   value: [1995, 2011]
+tipo_voto:
+  show: true
+  show_if:
+   options_view():
+    equals: true
+  input_type: selectizeInput
+  input_params:
+    label: Tipo de votación
+    choices: tipo_voto_ops()
+anio_cabildo:
+ show: true
+ show_if:
+  cabildo_view():
+   equals: true
+ input_type: sliderInput
+ input_params:
+   label: Fechas
+   min: 1996
+   max: 2016
+   step: 1
+   value: [1996, 2016]
+anio_recon:
+ show: true
+ show_if:
+  recon_view():
+   equals: true
+ input_type: sliderInput
+ input_params:
+   label: Fechas
+   min: 1996
+   max: 2018
+   step: 1
+   value: [1996, 2018]
+anio_cons:
+ show: true
+ show_if:
+  consulta_view():
+   equals: true
+ input_type: sliderInput
+ input_params:
+   label: Fechas
+   min: 1995
+   max: 2018
+   step: 1
+   value: [1995, 2018]
+estado:
+  show: true
+  show_if:
+   recon_view():
+    equals: true
+  input_type: selectizeInput
+  input_params:
+    label: Estado
+    choices: estado_ops()

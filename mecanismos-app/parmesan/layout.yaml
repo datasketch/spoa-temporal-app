@@ -1,0 +1,14 @@
+filtros:
+  label: 
+  inputs:
+    - referendo_ly
+    - anio
+    - anio_cabildo
+    - anio_recon
+    - anio_cons
+    - departamentos
+    - municipios
+    - tipo_voto
+    - estado
+
+

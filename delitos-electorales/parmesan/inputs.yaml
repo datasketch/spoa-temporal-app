@@ -1,0 +1,99 @@
+---
+variables_adicionales:
+  show: true
+  show_if:
+    pregunta():
+      equals: true
+  input_type: selectizeInput
+  input_params:
+    label: Elige variable de interes
+    choices:
+      Delitos contra la seguridad pública:
+      - base_seguridad
+      Cultivos ilícitos:
+      - cultivos_ilicitos
+      Delitos contra el medio ambiente:
+      - delitos_ambiente
+      Hechos Victimizantes:
+      - hechos_victimizantes
+      Tasa de homicidios:
+      - homicidios
+      Minería ilegal:
+      - minas
+      Sistema General de Participaciones:
+      - participaciones
+      Producto Interno Bruto:
+      - pib
+      Sistema General de Regalías:
+      - regalias
+      Régimen subsidiado:
+      - regimen_subsidiado
+tipo_cultivo:
+  show: true
+  show_if:
+    cultivo_view():
+      equals: true
+  input_type: radioButtons
+  input_params:
+    label: Cultivo de
+    choices:
+      Amapola:
+      - coca
+      Coca:
+      - amapola
+    inline: TRUE
+nivel_territorial:
+  show: true
+  input_type: selectizeInput
+  input_params:
+    label: Nivel departamental
+    choices:
+      Departamental:
+      - code_depto_dane
+      Municipal:
+      - code_mun_dane
+departamentos:
+  show: true
+  show_if:
+    territorio_select():
+      is_any_of: [code_mun_dane]
+  input_type: selectizeInput
+  input_params:
+    label: Departamento
+    choices: depto_opts()
+fechas:
+  show: true
+  input_type: sliderInput
+  input_params:
+    label: Fechas
+    min: 2014
+    max: 2019
+    step: 1
+    value: [2014, 2019]
+tipo_delito:
+  show: true
+  show_if:
+    delitos_seguridad():
+      equals: true
+  input_type: selectizeInput
+  input_params:
+    label: Tipo de delito
+    choices: 
+      - Acciones subversivas
+      - Terrorismo
+      - Torres energia
+      - Voladura de oleoductos
+conduta_delito:
+  show: true
+  show_if:
+    acciones_sub():
+      equals: true
+  input_type: selectizeInput
+  input_params:
+    label: Conducta
+    choices: condutas_opts() 
+
+      
+      
+
+

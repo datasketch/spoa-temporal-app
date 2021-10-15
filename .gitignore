@@ -2,3 +2,9 @@
 .Rhistory
 .RData
 .Ruserdata
+
+mecanismos-app/data/
+delitos-delectorales/data
+
+mecanismos-app/rsconnect
+delitos-delectorales/rsconnect
