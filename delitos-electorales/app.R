@@ -151,6 +151,10 @@ background: #0a4a83 !important;
 .leaflet-control-attribution {
  display: none;
 }
+
+.control-label {
+  margin-top: 10px;
+}
 "
 
 datos_siscrimel <- readRDS("data/all_spoa_data.rds")
@@ -201,6 +205,10 @@ ui <- panelsPage(
                       tags$a(
                         href="https://www.datasketch.co", target="blank",
                         img(src='ds_logo.png', align = "right", width = 150, height = 110)))
+  ),
+  panel(title = "Detalle", 
+        width = 300,
+        body =  uiOutput("click_text")#verbatimTextOutput("aver")#u
   )
 )
 
@@ -218,9 +226,9 @@ server <- function(input, output, session) {
     
     if (is.null(input$variables_principales)) return()
     
-    basicos <- data.frame(id = c("general", "delito", "relacion"),
-                          preguntas = c(paste0("¿Cuáles son las zonas más afectadas por ", input$variables_principales," electorales?"),
-                                        paste0("¿Cuáles son los tipos de  ", input$variables_principales," electorales más comunes?"),
+    basicos <- data.frame(id = c( "delito", "general", "relacion"),
+                          preguntas = c(paste0("¿Cuáles son los tipos de  ", input$variables_principales," electorales más comunes?"),
+                                        paste0("¿Cuáles son las zonas más afectadas por ", input$variables_principales," electorales?"),
                                         paste0("¿Cómo se relacionan   ", input$variables_principales," electorales con otras variables?"))
                           
     )
@@ -234,7 +242,7 @@ server <- function(input, output, session) {
   
   quest_choose <- reactive({
     last_btn <- input$last_click
-    if (is.null(last_btn)) last_btn <- "general"
+    if (is.null(last_btn)) last_btn <- "delito"
     last_btn
   })
   
@@ -242,7 +250,7 @@ server <- function(input, output, session) {
     if(is.null(questions_list())) return()
     l <- questions_list()
     last_btn <- quest_choose()
-    button_id <- which(c("general", "delito", "relacion") %in% last_btn)
+    button_id <- which(c("delito","general", "relacion") %in% last_btn)
     l[[button_id]] <- gsub("needed", "needed basic_active", l[[button_id]])
     l[[button_id]] <- HTML(paste0(paste(l[[button_id]], collapse = '')))
     output$basicos <- renderUI({
@@ -314,6 +322,19 @@ server <- function(input, output, session) {
     cv
   })
   
+  delitos_show <- reactive({
+    if (is.null(quest_choose())) return()
+    p <- quest_choose()
+    p == "delito"
+  })
+  
+  delitos_opts <- reactive({
+    req(data_select())
+    req(input$variables_principales)
+    vp <- input$variables_principales
+    if (vp == "delitos") vp <- "delito"
+    c("Todos",unique(data_select()[[vp]]))
+  })
   
   non_delito <- reactive({
     if (is.null(quest_choose())) return()
@@ -394,7 +415,7 @@ server <- function(input, output, session) {
     req(data_select())
     req(rate_type())
     df <- data_select()
-    print(input$departamentos)
+    
     if (is.null(input$departamentos)) return()
     if (input$departamentos != "Todos") {
       depto_o <- dp$depto[dp$id == input$departamentos]
@@ -412,6 +433,24 @@ server <- function(input, output, session) {
       if (actual_but$active == "table") {
         if (is.null(input$variables_adicionales)) return()
         df <- datos_siscrimel[[input$variables_adicionales]]
+      }
+    }
+    
+    if (quest_choose() == "delito") {
+      if (actual_but$active != "bar") {
+        if (is.null(input$tipos_delito)) return()
+        if (input$tipos_delito != "Todos") {
+          if (is.null(input$variables_principales)) return()
+          if (input$variables_principales %in% "delitos") {
+            df <- df %>% dplyr::filter(delito %in% input$tipos_delito)
+          } else if (input$variables_principales %in% "irregularidades"){
+            df <- df %>% dplyr::filter(irregularidades %in% input$tipos_delito)
+          } else {
+            return()
+          }
+        } else {
+          df <- df
+        }
       }
     }
     
@@ -488,7 +527,7 @@ server <- function(input, output, session) {
   })
   
   gen_viz <- reactive({
-    
+    if (nrow(data_viz()) == 0) return()
     if (is.null(input$departamentos)) return()
     if (actual_but$active == "map") {
       num_zoom <- 5
@@ -504,14 +543,14 @@ server <- function(input, output, session) {
         id_map_name <- paste0("col_depto_", id_depto)
         num_zoom <- 7
       }
-      
+    
       agg_opt <- "mean"
       if ("total" %in% names(data_viz())) agg_opt <- "sum"
       lf <- do.call("lflt_choropleth_GnmNum", 
                     list(
                       data = data_viz(),
                       map_name = id_map_name,
-                      palette_colors =  c("#73fbf3", "#60dbdf", "#4ebdcc", "#3d9fb9", "#2b82a7", "#1a6695", "#0a4a83"),
+                      palette_colors =  c("#f9c74f","#ee9b00", "#ca6702", "#bb3e03", "#ae2012", "#9b2226"),
                       map_tiles = "Esri.WorldStreetMap",
                       agg = agg_opt,
                       tooltip = tooltip_info(),
@@ -591,8 +630,8 @@ server <- function(input, output, session) {
     }
   })
   
-  downloadTableServer("dropdown_table", element = data_filter(), formats = c("csv", "xlsx", "json"))
-  downloadImageServer("download_viz", element = gen_viz(), lib = "highcharter", formats = c("jpeg", "pdf", "png", "html"), file_prefix = "plot")
+  downloadTableServer("dropdown_table", element = reactive(data_filter()), formats = c("csv", "xlsx", "json"))
+  downloadImageServer("download_viz", element = reactive(gen_viz()), lib = "highcharter", formats = c("jpeg", "pdf", "png", "html"), file_prefix = "plot")
   
   delitos_seguridad <- reactive({
     if (quest_choose() != "relacion") return(FALSE)
@@ -691,8 +730,7 @@ server <- function(input, output, session) {
     
     df$lat <- as.numeric(df$lat)
     df$lon <- as.numeric(df$lon)
-    df$radius <- scales::rescale(df$total, 3, 10)
-    
+    df$radius <- scales::rescale(df$total, c(3, 11))
     df$labels <- paste0(add_labs$Label[add_labs$Id == input$variables_adicionales], ": ", df$total)
     df
     #df %>% drop_na(lat, lon)
@@ -720,9 +758,14 @@ server <- function(input, output, session) {
                                     textsize = "13px", direction = "auto"))
   })
   
-  output$aver <- renderPrint({
-    data_relacion_filter()
-    #data_viz()
+
+  output$click_text <- renderUI({
+    tx <- HTML(
+      '<div class = "indicacion"><img src="click/click.svg" style="width: 50px; display:block;margin-left: 40%;"/>
+   <br/>
+   <p>Da clic en cada barra, color o elemento de la gráfica para obtener más información.</p><br/>
+    </div>')
+    tx
   })
   
   

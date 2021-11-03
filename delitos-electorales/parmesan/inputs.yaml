@@ -92,6 +92,17 @@ conduta_delito:
   input_params:
     label: Conducta
     choices: condutas_opts() 
+tipos_delito:
+  show: true
+  show_if:
+    delitos_show():
+      equals: true
+    id_viz():
+      is_any_of: [map, line]
+  input_type: selectizeInput
+  input_params:
+    label: Tipo de delito
+    choices: delitos_opts() 
 
       
       

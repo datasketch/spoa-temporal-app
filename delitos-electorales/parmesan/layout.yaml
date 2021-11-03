@@ -8,6 +8,7 @@ add_var:
 filtros:
   label: Filtros
   inputs:
+    - tipos_delito
     - nivel_territorial
     - departamentos
     - fechas
