@@ -417,10 +417,14 @@ server <- function(input, output, session) {
       } 
     } else {
       if (input$municipios != "TODOS") df <- df %>% dplyr::filter(Municipio %in% input$municipios)
+      
       if (options_view()) {
+        
+        if (is.null(input$tipo_voto)) return()
         if (input$tipo_voto != "TODOS") {
           df <- df %>% dplyr::filter(`Tipo de votación` %in% input$tipo_voto)
         }
+        
       }
     }
     
@@ -449,61 +453,68 @@ server <- function(input, output, session) {
     
   })
   
+
   
   data_viz <- reactive({
     req(data_filter())
     req(quest_choose())
     if (is.null(actual_but$active)) return()
-    df <- data_filter() 
-    
+    df <- data_filter()
+
     if (quest_choose() %in% c("referendo_id")) {
       req(input$referendo_ly)
       if (input$referendo_ly == "referendo") {
-        dv <- df %>% 
+        dv <- df %>%
           dplyr::group_by(Departamento) %>%
           dplyr::summarise(Total = n())
+        if (is.null(input$departamentos)) return()
         if (input$departamentos != "TODOS") {
-          dv <- df %>% 
+          dv <- df %>%
             dplyr::group_by(Municipio) %>%
-            dplyr::summarise(Total = n()) 
+            dplyr::summarise(Total = n())
         }
       } else {
-        dv <- df %>% 
+        dv <- df %>%
           dplyr::group_by(Departamento) %>%
           dplyr::summarise(Total = sum(Total, na.rm = T))
       }
     } else if (quest_choose() == "cabildo") {
-      dv <- df %>% 
+      dv <- df %>%
         dplyr::group_by(Departamento) %>%
         dplyr::summarise(Total = n())
+      if (is.null(input$departamentos)) return()
       if (input$departamentos != "TODOS") {
-        dv <- df %>% 
+        dv <- df %>%
           dplyr::group_by(Municipio) %>%
           dplyr::summarise(Total = n())
       }
     } else {
-      dv <- df %>% 
+      dv <- df %>%
         dplyr::group_by(Departamento) %>%
         dplyr::summarise(Total = sum(Total, na.rm = TRUE))
+      if (is.null(input$departamentos)) return()
       if (input$departamentos != "TODOS") {
-        dv <- df %>% 
+        dv <- df %>%
           dplyr::group_by(Municipio) %>%
-          dplyr::summarise(Total = sum(Total, na.rm = T)) 
+          dplyr::summarise(Total = sum(Total, na.rm = T))
       }
     }
-    
+    if (options_view()) {
     if (actual_but$active %in% c("bar", "pie"))
-      if (!is.null(input$tipo_voto)) {
+      if (is.null(input$tipo_voto)) {
+        return()
+      } else {
         if (input$tipo_voto == "TODOS") {
           dv <- df %>% group_by(`Tipo de votación`) %>% summarise(Total = sum(Total, na.rm = T))
         }
       }
+    }
     
     dv
-    
-    
+
+
   })
-  
+
   viz_type <- reactive({
     if (is.null(actual_but$active)) return()
     viz <- actual_but$active
@@ -512,40 +523,45 @@ server <- function(input, output, session) {
     if (actual_but$active == "table") vt <- "table"
     vt
   })
-  
-  
+
+
   viz_end <- reactive({
+    
+    if (is.null(actual_but$active)) return()
     req(viz_type())
     req(data_viz())
     if (is.null(data_viz())) return()
-    if (is.null(actual_but$active)) return()
+    if (nrow(data_viz()) == 0) return()
+
     if (actual_but$active == "table") return()
     df <- data_viz()
-    
+
+
+    tryCatch(
+      {
     if (actual_but$active == "map") {
-      
+
       geo_select <- "col_departments"
       input_depto <- iconv(tolower(input$departamentos), to = "ASCII//TRANSLIT")
       dptos_id$label <- iconv(tolower(dptos_id$label), to = "ASCII//TRANSLIT")
-      
+
       if (input_depto != "todos") {
         geo_select <- paste0("col_depto_", dptos_id$id[grep(input_depto,dptos_id$label)])
       }
-      
-      print(geo_select)
-      print(df)
-      do.call(viz_type(), list(data = df, 
+
+     
+      do.call(viz_type(), list(data = df,
                                map_name = geo_select,
                                map_tiles = "Esri.WorldStreetMap",
                                legend_position = "bottomleft",
-                               palette_colors =  c("#73fbf3", "#60dbdf", "#4ebdcc", "#3d9fb9", "#2b82a7", "#1a6695", "#0a4a83"),
+                               palette_colors =  c("#f9c74f","#ee9b00", "#ca6702", "#bb3e03", "#ae2012", "#9b2226"),
                                map_min_zoom = 5))
     } else {
       if (input$departamentos != "todos") {
-        } 
+        }
       #func_chart <- "function(event) {Shiny.onInputChange('hcClicked',  {id:event.point.name, timestamp: new Date().getTime()});}"
       func_chart <- "function(event) {Shiny.onInputChange('hcClicked',  {id:event.point.name, timestamp: new Date().getTime()});}"
-      
+
       opts_l <- list(data = df,
                      orientation = "hor",
                      label_wrap = 100,
@@ -555,7 +571,7 @@ server <- function(input, output, session) {
                      palette_colors = c("#0a4a83", "#0ebabe", "#eb5d0b", "#f4b72f", "#27a864"),
                      clickFunction = JS(func_chart)
       )
-      
+
       if (options_view()) {
         if (input$tipo_voto == "TODOS") {
           opts_l <- modifyList(opts_l, list(
@@ -565,14 +581,21 @@ server <- function(input, output, session) {
           ))
         }
       }
-      
-      do.call(viz_type(), opts_l)  
+
+      do.call(viz_type(), opts_l)
     }
-    
+      },
+    error=function(cond) {
+      return()
+
+    }
+    )
+
   })
-  
-  
+
+
   output$table_view <- renderDataTable({
+    if (actual_but$active != "table") return()
     req(data_filter())
     df <- data_filter()
     DT::datatable(df,
@@ -587,24 +610,24 @@ server <- function(input, output, session) {
                       "function(settings, json) {",
                       "$(this.api().table().header()).css({'background-color': '#0a4a83', 'color': '#fff'});",
                       "}")
-                  )) %>% 
+                  )) %>%
       formatStyle( 0 , target= 'row',color = '#0A446B', fontSize ='13px', lineHeight='15px')
   })
-  
+
   output$basic_viz <- renderHighchart({
     if (is.null(actual_but$active)) return()
     if (actual_but$active == "table") return()
     if (actual_but$active == "map") return()
     viz_end()
   })
-  
-  
+
+
   output$map_viz <- renderLeaflet({
     if (is.null(actual_but$active)) return()
     if (actual_but$active != "map") return()
     viz_end()
   })
-  
+
   output$viz <- renderUI({
     if (is.null(data_viz())) return("Sin registros para los filtros en selección")
     if (is.null(actual_but$active)) return()
@@ -616,72 +639,73 @@ server <- function(input, output, session) {
       highchartOutput("basic_viz", height = 380)
     }
   })
-  
-  
-  
-  
+
+
+
+
   id_click_viz <- reactiveValues(value = NULL)
-  
+
   observeEvent(input$map_viz_shape_click, {
     id_click_viz$value <- input$map_viz_shape_click$id
   })
-  
-  
+
+
   #
   observeEvent(input$hcClicked, {
     id_click_viz$value <- input$hcClicked$id
   })
-  
-  
+
+
   click_table <- reactive({
-    
+
     id_sel <- input$table_view_rows_selected
     if (is.null(id_sel)) return()
     df <- data_filter()[id_sel,]
     cs <- df$Departamento
     if (options_view()) {
       if (input$tipo_voto != "TODOS") {
-        cs <- df$`Tipo de votación` 
+        cs <- df$`Tipo de votación`
       }
-    } 
+    }
     cs
   })
-  
+
   observeEvent(input$table_view_rows_selected,{
     id_click_viz$value <- click_table()
   })
-  
+
   observeEvent(input$last_click,{
     id_click_viz$value <- NULL
   })
-  
-  
+
+
   output$tabla_refe <- renderUI({
     downloadTableUI("dropdown_refepais", dropdownLabel = "Descarga", formats = c("csv", "xlsx", "json"), display = "dropdown")
   })
-  
+
   data_refepais <- reactive({
+    if (quest_choose() != "referendo_id") return()
     all_data$referendo_paises
   })
-  
-  downloadTableServer("dropdown_refepais", element = data_refepais(), formats = c("csv", "xlsx", "json"))
-  
+
+  downloadTableServer("dropdown_refepais", element = reactive(data_refepais()), formats = c("csv", "xlsx", "json"))
+
   data_info <- reactive({
     if (is.null(data_filter())) return()
     if (is.null(id_click_viz$value)) return()
     df <- data_filter()
     #"referendo_id", "plebiscito", "cabildo", "reconcocatoria", "consulta_pop"
-    
+
     # if (options_view()) {
     #   if (input$tipo_voto != "TODOS") {
     #     df <- df %>% filter(`Tipo de votación` %in% id_click_viz$value)
     #   }
     # }
-    
+
     if (quest_choose() == "referendo_id") {
       req(input$referendo_ly)
       if (input$referendo_ly == "referendo") {
-        tx <- 
+        tx <-
           map(id_click_viz$value, function(d){
             dp <- df %>% filter(Departamento %in% d)
             HTML("<h2>", id_click_viz$value, "</h2>",
@@ -697,14 +721,14 @@ server <- function(input, output, session) {
                   uiOutput("tabla_refe"))
       }
     }
-    
+
     if (quest_choose() == "plebiscito") {
         tx <- map(id_click_viz$value, function(d){
-          dp <- df %>% filter(Departamento %in% d) %>% 
-            group_by(Municipio, `Tipo de votación`) %>% 
-            summarise(Total = sum(Total, na.rm =  TRUE)) 
+          dp <- df %>% filter(Departamento %in% d) %>%
+            group_by(Municipio, `Tipo de votación`) %>%
+            summarise(Total = sum(Total, na.rm =  TRUE))
           dp$votos_info <- paste0(dp$`Tipo de votación`, ": ", dp$Total)
-          dp <- dp  %>% group_by(Municipio) %>% 
+          dp <- dp  %>% group_by(Municipio) %>%
             summarise(votos_info = paste0(votos_info, collapse = "</br>"))
           HTML("<h2>", id_click_viz$value, "</h2>",
                map(1:nrow(dp), function(i){
@@ -714,9 +738,9 @@ server <- function(input, output, session) {
           )
         })
     }
-    
+
     if (quest_choose() == "cabildo") {
-      tx <- 
+      tx <-
         map(id_click_viz$value, function(d){
           dp <- df %>% filter(Departamento %in% d)
           HTML("<h2>", id_click_viz$value, "</h2>",
@@ -731,11 +755,11 @@ server <- function(input, output, session) {
     #Listado de cabildos realizados con “FECHA, DEPARTAMENTO, MUNICIPIO, POTENCIAL, UMBRAL, TOTAL VOTACIÓN, ABSTENCIÓN (%), SI, NO, VOTO EN BLANCO, NULOS, NO MARCADOS”
     if (quest_choose() == "reconcocatoria") {
       tx <- map(id_click_viz$value, function(d){
-        dp <- df %>% filter(Departamento %in% d) %>% 
-          group_by(Municipio, `Tipo de votación`) %>% 
-          summarise(Total = sum(Total, na.rm =  TRUE), Potencial = Potencial, Umbral= Umbral, `Abstención` = `Abstención`) 
+        dp <- df %>% filter(Departamento %in% d) %>%
+          group_by(Municipio, `Tipo de votación`) %>%
+          summarise(Total = sum(Total, na.rm =  TRUE), Potencial = Potencial, Umbral= Umbral, `Abstención` = `Abstención`)
         dp$votos_info <- paste0(dp$`Tipo de votación`, ": ", dp$Total)
-        dp <- dp  %>% group_by(Municipio, Potencial, Umbral, `Abstención`) %>% 
+        dp <- dp  %>% group_by(Municipio, Potencial, Umbral, `Abstención`) %>%
           summarise(votos_info = paste0(votos_info, collapse = "</br>"))
         HTML("<h2>", id_click_viz$value, "</h2>",
              map(1:nrow(dp), function(i){
@@ -746,15 +770,15 @@ server <- function(input, output, session) {
              }) %>% paste0(collapse = "<br/>")
         )
       })
-    } 
-    
+    }
+
     if (quest_choose() == "consulta_pop") {
       tx <- map(id_click_viz$value, function(d){
-        dp <- df %>% filter(Departamento %in% d) %>% 
-          group_by(Descripción, Municipio, Fecha, `Tipo de votación`) %>% 
-          summarise(Total = sum(Total, na.rm =  TRUE), `Abstención` = `Abstención`) 
+        dp <- df %>% filter(Departamento %in% d) %>%
+          group_by(Descripción, Municipio, Fecha, `Tipo de votación`) %>%
+          summarise(Total = sum(Total, na.rm =  TRUE), `Abstención` = `Abstención`)
         dp$votos_info <- paste0(dp$`Tipo de votación`, ": ", dp$Total)
-        dp <- dp  %>% group_by(Descripción, Fecha, Municipio, `Abstención`) %>% 
+        dp <- dp  %>% group_by(Descripción, Fecha, Municipio, `Abstención`) %>%
           summarise(votos_info = paste0(votos_info, collapse = "</br>"))
         HTML("<h2>", id_click_viz$value, "</h2>",
              map(1:nrow(dp), function(i){
@@ -767,28 +791,25 @@ server <- function(input, output, session) {
         )
       })
     }
-    
-    
-    
-    
+
+
+
+
     tx
   })
-  
-  
+
+
   output$text_click <- renderUI({
     p <- quest_choose()
     if (is.null(p)) return()
     data_info()
   })
-  
-  output$aver <- renderPrint({
-    data_info()
-  })
-  
+
+
   output$textos_informativos <- renderUI({
     if (!is.null(id_click_viz$value)) return()
     if (!is.null(data_info())) return()
-    
+
     tx <- HTML(
       '<div class = "indicacion"><img src="click/click.svg" style="width: 50px; display:block;margin-left: 40%;"/>
    <br/><p><b>1.</b>Selecciona el tipo de datos que quieres explorar, puedes elegir: Referendo, Plebiscito 2016,
@@ -796,8 +817,8 @@ server <- function(input, output, session) {
    <p><b>2.</b>Selecciona el tipo de gráfico que quieres ver.</p><br/>
    <p><b>3.</b>Da clic en cada barra, color o elemento de la gráfica para obtener más información.</p><br/>
     </div>')
-    
-    
+
+
     if (quest_choose() == "referendo_id") {
       req(input$referendo_ly)
       if (input$referendo_ly != "referendo") {
@@ -805,21 +826,22 @@ server <- function(input, output, session) {
                   uiOutput("tabla_refe"))
       }
     }
-    
+
     tx
-    
+
   })
-  
+
 
   output$info_final <- renderUI({
+
     if (is.null(id_click_viz$value)) {
       uiOutput("textos_informativos")
     } else {
       uiOutput("text_click")
     }
   })
-  
-  
+
+
   output$descargas <- renderUI({
     if (is.null(actual_but$active)) return()
     if (actual_but$active != "table") {
@@ -828,10 +850,10 @@ server <- function(input, output, session) {
       downloadTableUI("dropdown_table", dropdownLabel = "Descarga", formats = c("csv", "xlsx", "json"), display = "dropdown")
     }
   })
-  
-  downloadTableServer("dropdown_table", element = data_filter(), formats = c("csv", "xlsx", "json"))
-  downloadImageServer("download_viz", element = viz_end(), lib = "highcharter", formats = c("jpeg", "pdf", "png", "html"), file_prefix = "plot")
-  
+
+  downloadTableServer("dropdown_table", element = reactive(data_filter()), formats = c("csv", "xlsx", "json"))
+  downloadImageServer("download_viz", element = reactive(viz_end()), lib = "highcharter", formats = c("jpeg", "pdf", "png", "html"), file_prefix = "plot")
+
 }
 
 shinyApp(ui, server)
