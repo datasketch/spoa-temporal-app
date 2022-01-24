@@ -1,11 +1,11 @@
 Label,Id
-Número de delitos contra la seguridad pública,base_seguridad
-Número de delitos contra el medio ambiente,delitos_ambiente
+Número de delitos contra la <br/>  seguridad pública,base_seguridad
+Número de delitos contra el <br/>  medio ambiente,delitos_ambiente
 Tasa promedio de homicidios,homicidios
-Promedio de personas registradas al Sistema General de Participación,participaciones
-Promedio de personas registradas al  Sistema General de Regalías,regalias
+Promedio de personas registradas al <br/> Sistema General de Participación,participaciones
+Promedio de personas registradas al  <br/>  Sistema General de Regalías,regalias
 Promedio de Hectáreas de Cultivos ilícitos,cultivos_ilicitos
 Número de hechos victimizantes,hechos_victimizantes
 Número de minerías ilegales,minas
 Promedio Producto Interno Bruto,pib
-Promedio de personas registradas al Régimen subsidiado,regimen_subsidiado
+Promedio de personas registradas al  <br/> Régimen subsidiado,regimen_subsidiado

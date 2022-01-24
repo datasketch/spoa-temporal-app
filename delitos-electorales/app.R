@@ -205,11 +205,11 @@ ui <- panelsPage(
                       tags$a(
                         href="https://www.datasketch.co", target="blank",
                         img(src='ds_logo.png', align = "right", width = 150, height = 110)))
-  ),
-  panel(title = "Detalle", 
-        width = 300,
-        body =  uiOutput("click_text")#verbatimTextOutput("aver")#u
-  )
+  )#,
+  # panel(title = "Detalle", 
+  #       width = 300,
+  #       body =  uiOutput("click_text")#verbatimTextOutput("aver")#u
+  # )
 )
 
 server <- function(input, output, session) {
@@ -262,11 +262,14 @@ server <- function(input, output, session) {
   possible_viz <- reactive({
     p <- quest_choose()
     if (is.null(p)) return()
+    v <-  c("map", "bar", "line", "table")
     if (p == "relacion") {
       v <- c("map" , "table") #"scatter",
-    } else {
-      v <-  c("map", "bar", "line", "table")
     }
+    if (p == "delito") {
+      v <- c("bar", "map", "line", "table")
+    }
+    
     v
   })
   
@@ -299,7 +302,7 @@ server <- function(input, output, session) {
   
   
   id_viz <- reactive({
-    id_viz <- input$viz_selection
+    id_viz <- actual_but$active
     if (is.null(id_viz)) id_viz <- "map"
     id_viz
   })
@@ -453,7 +456,7 @@ server <- function(input, output, session) {
         }
       }
     }
-    
+    #print( df)
     df
     
   })
@@ -462,7 +465,7 @@ server <- function(input, output, session) {
     req(data_filter())
     req(rate_type())
     df <- data_filter()
-    
+    #print(quest_choose())
     if (is.null(input$nivel_territorial)) return()
     
     var_sel <-  c("mcpio", "depto", "anio", rate_type()) 
@@ -482,6 +485,11 @@ server <- function(input, output, session) {
       var_sel <- setdiff(var_sel, "mcpio")
     } 
     
+    if (actual_but$active == "map") {
+      if (quest_choose() == "delito") {
+        var_sel <- c(var_sel, "delito")
+      }
+    }
     
     if (actual_but$active != "map") {
       if (quest_choose() == "delito") {
@@ -499,8 +507,19 @@ server <- function(input, output, session) {
       }
     }
     
+    df <- df[var_sel]
     
-    df[var_sel]
+    
+    if (actual_but$active == "map") {
+      if (quest_choose() == "delito") {
+        df <- df %>% 
+          dplyr::group_by(depto) %>%
+          dplyr::summarise(total = sum(total),
+                           delitos = paste0(unique(delito), collapse = "<br/>")) 
+      }
+    }
+    
+    df
   })
   
   
@@ -513,13 +532,15 @@ server <- function(input, output, session) {
       if (input$nivel_territorial == "code_mun_dane") {
         tpi <- HTML(paste0("Code_mun_dane: {code_mun_dane} <br/> Nombre: {mcpio} <br/>", rate_type(),": {",rate_type(),"}"))
       } else {
-        tpi <- HTML(paste0("Code_depto_dane: {code_depto_dane} <br/> Nombre: {depto} <br/>", rate_type(),": {",rate_type(),"}"))
+        tpi <- HTML(paste0("Code_depto_dane: {code_depto_dane}
+                           <br/> Nombre: {depto} <br/>",
+                           rate_type(),": {",rate_type(),"} <br/>"))
       }  
     } else {
       if (input$nivel_territorial == "code_mun_dane") {
         tpi <- HTML("Nombre: {mcpio}  <br/> Total de delitos: {total}")
       } else {
-        tpi <- "Nombre: {depto} <br/> Total de delitos: {total}"
+        tpi <- "Nombre: {depto} <br/> Total de delitos: {total} <br/> {delitos}"
       } 
       
     }
@@ -543,9 +564,10 @@ server <- function(input, output, session) {
         id_map_name <- paste0("col_depto_", id_depto)
         num_zoom <- 7
       }
-    
+      
       agg_opt <- "mean"
       if ("total" %in% names(data_viz())) agg_opt <- "sum"
+      #print(data_viz())
       lf <- do.call("lflt_choropleth_GnmNum", 
                     list(
                       data = data_viz(),
@@ -561,7 +583,11 @@ server <- function(input, output, session) {
       if (is.null(input$departamentos)) return()
       if (actual_but$active == "map") return()
       viz_type <- "hgch_bar_CatNum"
-      if (actual_but$active == "line") viz_type <- "hgch_line_CatYeaNum"
+      order_year <- NULL
+      if (actual_but$active == "line") {
+        viz_type <- "hgch_line_CatYeaNum"
+        order_year <- sort(unique(data_viz()[[2]]))
+      }
       agg_opt <- "mean"
       if ("total" %in% names(data_viz())) agg_opt <- "sum"
       
@@ -571,6 +597,7 @@ server <- function(input, output, session) {
                              label_wrap = 100,
                              ver_title = " ",
                              sort = "desc",
+                             order = order_year,
                              hor_title = " ", #reactivo porque depende de los datos
                              palette_colors = c("#0a4a83", "#0ebabe", "#eb5d0b", "#f4b72f", "#27a864")))
     }
@@ -731,7 +758,8 @@ server <- function(input, output, session) {
     df$lat <- as.numeric(df$lat)
     df$lon <- as.numeric(df$lon)
     df$radius <- scales::rescale(df$total, c(3, 11))
-    df$labels <- paste0(add_labs$Label[add_labs$Id == input$variables_adicionales], ": ", df$total)
+    df$labels <- paste0(add_labs$Label[add_labs$Id == input$variables_adicionales], ": <br/>",
+                        format(df$total, digits = 2, big.mark = ",",  scientific = FALSE))  %>% lapply(htmltools::HTML)
     df
     #df %>% drop_na(lat, lon)
     
@@ -743,8 +771,9 @@ server <- function(input, output, session) {
   
   observe({
     if (is.null(data_relacion_filter())) return()
-    
-    leafletProxy("map_lflt", data = data_relacion_filter()) %>%
+    df <- data_relacion_filter()
+    #print(df)
+    leafletProxy("map_lflt", data = df) %>%
       clearMarkers() %>%
       addCircleMarkers(
         lng = ~lon,
@@ -758,7 +787,7 @@ server <- function(input, output, session) {
                                     textsize = "13px", direction = "auto"))
   })
   
-
+  
   output$click_text <- renderUI({
     tx <- HTML(
       '<div class = "indicacion"><img src="click/click.svg" style="width: 50px; display:block;margin-left: 40%;"/>
