@@ -155,6 +155,10 @@ background: #0a4a83 !important;
 .control-label {
   margin-top: 10px;
 }
+
+.dropdown-action-container, .shiny-bound-input {
+ width: 250px !important;
+}
 "
 
 datos_siscrimel <- readRDS("data/all_spoa_data.rds")
@@ -465,6 +469,8 @@ server <- function(input, output, session) {
     req(data_filter())
     req(rate_type())
     df <- data_filter()
+    #print("ACAAA")
+    #print(df)
     #print(quest_choose())
     if (is.null(input$nivel_territorial)) return()
     
@@ -485,9 +491,12 @@ server <- function(input, output, session) {
       var_sel <- setdiff(var_sel, "mcpio")
     } 
     
+
     if (actual_but$active == "map") {
       if (quest_choose() == "delito") {
-        var_sel <- c(var_sel, "delito")
+        var_p <- input$variables_principales
+        if (var_p == "delitos") var_p <- "delito"
+        var_sel <- c(var_sel, var_p)
       }
     }
     
@@ -508,17 +517,24 @@ server <- function(input, output, session) {
     }
     
     df <- df[var_sel]
-    
+ 
     
     if (actual_but$active == "map") {
       if (quest_choose() == "delito") {
-        df <- df %>% 
+        if (input$variables_principales == "delitos") {
+        df <- df %>%
           dplyr::group_by(depto) %>%
           dplyr::summarise(total = sum(total),
-                           delitos = paste0(unique(delito), collapse = "<br/>")) 
+                           delitos = paste0(unique(delito), collapse = "<br/>"))
+        } else {
+          df <- df %>%
+            dplyr::group_by(depto) %>%
+            dplyr::summarise(total = sum(total),
+                             delitos = paste0(unique(irregularidades), collapse = "<br/>")) 
+        }
       }
     }
-    
+    #print(df)
     df
   })
   
@@ -651,9 +667,13 @@ server <- function(input, output, session) {
   output$descargas <- renderUI({
     if (is.null(actual_but$active)) return()
     if (actual_but$active != "table") {
-      downloadImageUI("download_viz", dropdownLabel = "Descarga", formats = c("jpeg", "pdf", "png", "html"), display = "dropdown")
+      div (style = "display: grid;grid-template-columns: 1fr 1fr;grid-gap: 20px;",
+           downloadImageUI("download_viz", dropdownLabel = "Descargar visualización", formats = c("jpeg", "pdf", "png", "html"), display = "dropdown"),
+           #} else {
+           downloadTableUI("dropdown_table", dropdownLabel = "Descargar Datos  ", formats = c("csv", "xlsx", "json"), display = "dropdown")
+      )
     } else {
-      downloadTableUI("dropdown_table", dropdownLabel = "Descarga", formats = c("csv", "xlsx", "json"), display = "dropdown")
+      downloadTableUI("dropdown_table", dropdownLabel = "Descargar Datos  ", formats = c("csv", "xlsx", "json"), display = "dropdown")
     }
   })
   
