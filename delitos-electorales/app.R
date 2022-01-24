@@ -144,9 +144,25 @@ background: #0a4a83 !important;
     background-color: #197e93 !important;
 }
 
+.buttons-group,.button-style {
+width: 30px !important;
+height: 30px !important;
+}
+
+.buttons-group {
+  padding: 0px !important;
+  display: flex;
+}
+
+
+.buttons-group .button-style.active-btn:hover {
+    background-color: #003F59 !important;
+}
+
 .button-checkmark {
  display: none;
 }
+
 
 .leaflet-control-attribution {
  display: none;
@@ -159,6 +175,11 @@ background: #0a4a83 !important;
 .dropdown-action-container, .shiny-bound-input {
  width: 250px !important;
 }
+.first-container {
+ width: 250px;
+}
+
+
 "
 
 datos_siscrimel <- readRDS("data/all_spoa_data.rds")
@@ -200,15 +221,23 @@ ui <- panelsPage(
   ),
   panel(title = "Visualización",
         id = "naranja",
-        header_right = uiOutput("descargas"),
+        header_right = div(style = "display: flex;",
+                           div(
+                             class='first-container',
+                             uiOutput("viz_icons")),
+                           div(class='second-container',
+                               uiOutput("descargas")),
+                           #), div(uiOutput("descargas"))
+        ),
+        #header_right = uiOutput("descargas"),
         can_collapse = FALSE,
         color = "chardonnay", #div(add_busy_spinner(spin = "fading-circle"),uiOutput("final_viz"))
-        body = uiOutput("final_viz"), # verbatimTextOutput("aver"),# 
-        footer =  div(class = "panel-header",
-                      uiOutput("viz_icons"), 
-                      tags$a(
-                        href="https://www.datasketch.co", target="blank",
-                        img(src='ds_logo.png', align = "right", width = 150, height = 110)))
+        body = uiOutput("final_viz")#, # verbatimTextOutput("aver"),# 
+        # footer =  div(class = "panel-header",
+        #               uiOutput("viz_icons"), 
+        #               tags$a(
+        #                 href="https://www.datasketch.co", target="blank",
+        #                 img(src='ds_logo.png', align = "right", width = 150, height = 110)))
   )#,
   # panel(title = "Detalle", 
   #       width = 300,
@@ -297,7 +326,7 @@ server <- function(input, output, session) {
     req(possible_viz())
     suppressWarnings(
       buttonImageInput('viz_selection',
-                       div(class="title-data-select", "Selecciona el tipo de gráfica"),
+                       ' ',#div(class="title-data-select", "Selecciona el tipo de gráfica"),
                        images = possible_viz(),
                        path = 'icons/',
                        active = actual_but$active)
@@ -655,11 +684,11 @@ server <- function(input, output, session) {
   output$final_viz <- renderUI({
     if (is.null(id_viz())) return()
     if (id_viz() == "map") {
-      v <- leafletOutput("map_lflt")
+      v <- leafletOutput("map_lflt", height = 600)
     } else if (id_viz() == "table") {
-      v <- dataTableOutput("table_view", width = 950)
+      v <- dataTableOutput("table_view", width = 950, height = 600)
     } else {
-      v <- highchartOutput("other_hgch")
+      v <- highchartOutput("other_hgch", height = 600)
     }
     v
   })
