@@ -449,16 +449,15 @@ server <- function(input, output, session) {
   
   data_filter <- reactive({
     req(data_select())
-    req(rate_type())
     df <- data_select()
-    
+
     if (is.null(input$departamentos)) return()
     if (input$departamentos != "Todos") {
       depto_o <- dp$depto[dp$id == input$departamentos]
       df$depto <- toupper(df$depto)
       df <- df %>% filter(depto %in% depto_o)
     }
-    
+ 
     if (is.null(input$fechas)) return()
     anios <- input$fechas
     if (length(input$fechas) > 1) anios <- input$fechas[1]:input$fechas[2]
@@ -471,9 +470,9 @@ server <- function(input, output, session) {
         df <- datos_siscrimel[[input$variables_adicionales]]
       }
     }
-    
+  
     if (quest_choose() == "delito") {
-      if (actual_but$active != "bar") {
+      if (!actual_but$active %in% c("bar", "table")) {
         if (is.null(input$tipos_delito)) return()
         if (input$tipos_delito != "Todos") {
           if (is.null(input$variables_principales)) return()
@@ -498,9 +497,7 @@ server <- function(input, output, session) {
     req(data_filter())
     req(rate_type())
     df <- data_filter()
-    #print("ACAAA")
-    #print(df)
-    #print(quest_choose())
+   
     if (is.null(input$nivel_territorial)) return()
     
     var_sel <-  c("mcpio", "depto", "anio", rate_type()) 
@@ -640,6 +637,7 @@ server <- function(input, output, session) {
                              orientation = "hor",
                              agg = agg_opt,
                              label_wrap = 100,
+                             label_wrap_legend = 100,
                              ver_title = " ",
                              sort = "desc",
                              order = order_year,
@@ -649,7 +647,10 @@ server <- function(input, output, session) {
   })
   
   output$table_view <- renderDataTable({
+    #print(actual_but$active)
+    #print( data_filter())
     req(data_filter())
+  
     df <- data_filter()
     DT::datatable(df,
                   rownames = F,
