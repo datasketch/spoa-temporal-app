@@ -560,6 +560,14 @@ server <- function(input, output, session) {
         }
       }
     }
+    
+    
+    if (actual_but$active %in% c("bar", "line")) {
+      if (sum(c("mcpio", "depto") %in% names(df)) == 2) {
+       df <- df[,-2]
+      }
+    }
+    
     #print(df)
     df
   })
@@ -592,6 +600,8 @@ server <- function(input, output, session) {
   gen_viz <- reactive({
     if (nrow(data_viz()) == 0) return()
     if (is.null(input$departamentos)) return()
+    #print(data_viz())
+    #print(quest_choose())
     if (actual_but$active == "map") {
       num_zoom <- 5
       
@@ -631,11 +641,18 @@ server <- function(input, output, session) {
         order_year <- sort(unique(data_viz()[[2]]))
       }
       agg_opt <- "mean"
+      slice_n <- NULL
       if ("total" %in% names(data_viz())) agg_opt <- "sum"
+      if ("mcpio" %in% names(data_viz())) {
+        if (nrow(data_viz()) > 16) {
+          slice_n <- 15
+        }
+      }
       
       do.call(viz_type, list(data = data_viz(),
                              orientation = "hor",
                              agg = agg_opt,
+                             slice_n = slice_n,
                              label_wrap = 100,
                              label_wrap_legend = 100,
                              ver_title = " ",
