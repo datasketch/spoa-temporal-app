@@ -66,10 +66,10 @@ fechas:
   input_type: sliderInput
   input_params:
     label: Fechas
-    min: 2014
-    max: 2019
+    min: min_anio()
+    max: max_anio()
     step: 1
-    value: [2014, 2019]
+    value: range_anio()
 tipo_delito:
   show: true
   show_if:

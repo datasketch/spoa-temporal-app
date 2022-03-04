@@ -188,7 +188,7 @@ depto_centroids <- read_rds("data/deptos_centroids.rds")
 dp <- read_csv("data/deptos_conf.csv")
 add_labs <- read_csv("data/label_other_data.csv")
 
-addLegendCustom <- function(map, colors, labels, sizes, opacity = 0.8, position ="bottomleft", title = "Líderes asesinados"){
+addLegendCustom <- function(map, colors, labels, sizes, opacity = 0.8, position ="bottomleft", title = "Líderes asesinados") {
   colorAdditions <- paste0(colors, "; width:", sizes, "px; height:", sizes, "px;border-radius: 50%;")
   labelAdditions <- paste0("<div style='display: inline-block;height: ", sizes, "px;margin-top: 4px;line-height: ", sizes, "px;'>", labels, "</div>")
   return(addLegend(map, colors = colorAdditions, labels = labelAdditions, opacity = opacity, position = position, title = title))
@@ -433,6 +433,22 @@ server <- function(input, output, session) {
     d_s <- datos_siscrimel[[id_core]]
 
     d_s
+  })
+  
+  min_anio <- reactive({
+    req(data_select())
+    min_a <- min(data_select()$anio, na.rm = TRUE)
+    min_a
+  })
+  
+  max_anio <- reactive({
+    req(data_select())
+    max_a <- max(data_select()$anio, na.rm = TRUE)
+    max_a
+  })
+  
+  range_anio <- reactive({
+    c(min_anio(), max_anio())
   })
   
   

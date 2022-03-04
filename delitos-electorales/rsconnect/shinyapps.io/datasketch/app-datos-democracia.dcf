@@ -5,9 +5,9 @@ account: datasketch
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 4393536
-bundleId: 5640514
+bundleId: 5643061
 url: https://datasketch.shinyapps.io/app-datos-democracia/
-when: 1646371215.95191
-lastSyncTime: 1646371215.95192
+when: 1646414092.15113
+lastSyncTime: 1646414092.15114
 asMultiple: FALSE
 asStatic: FALSE
