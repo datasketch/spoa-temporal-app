@@ -210,6 +210,13 @@ ui <- panelsPage(
     includeScript("js/siscrimel.js")
   )),
   styles = style,
+  shinybusy::busy_start_up(
+    loader = tags$img(
+      src = "loading_gris.gif",
+      width = 100), 
+    mode = "auto",
+    color = "#435b69",
+    background = "#FFF"),
   panel(title = "Preguntas",
         id = "azul",
         width = 300,
@@ -424,6 +431,7 @@ server <- function(input, output, session) {
     id_core <- core_data()
     if (is.null(id_core)) return()
     d_s <- datos_siscrimel[[id_core]]
+
     d_s
   })
   
@@ -488,12 +496,13 @@ server <- function(input, output, session) {
         }
       }
     }
-    #print( df)
+
     df
     
   })
   
   data_viz <- reactive({
+    tryCatch({
     req(data_filter())
     req(rate_type())
     df <- data_filter()
@@ -504,13 +513,15 @@ server <- function(input, output, session) {
     if (actual_but$active == "map") {
       if (quest_choose() != "delito") {
         var_sel <- c(var_sel, "code_mun_dane", "code_depto_dane")
-      }
+      } 
     }
     if (actual_but$active != 'line') var_sel <- setdiff(var_sel, "anio")
     
     if (is.null(input$departamentos)) return()
+    if (quest_choose() != "delito") {
     if (input$departamentos != "Todos") {
       var_sel <- setdiff(var_sel, "depto")
+    }
     }
     
     if (input$nivel_territorial == "code_depto_dane") {
@@ -522,10 +533,12 @@ server <- function(input, output, session) {
       if (quest_choose() == "delito") {
         var_p <- input$variables_principales
         if (var_p == "delitos") var_p <- "delito"
-        var_sel <- c(var_sel, var_p)
+        var_id <- c(var_sel, var_p)
+        var_sel <- unique(c("mcpio",var_sel, var_p))
       }
     }
-    
+
+
     if (actual_but$active != "map") {
       if (quest_choose() == "delito") {
         var_p <- input$variables_principales
@@ -541,23 +554,34 @@ server <- function(input, output, session) {
         var_sel <- c(var_p, "anio","total")
       }
     }
-    
+
     df <- df[var_sel]
- 
+
     
     if (actual_but$active == "map") {
       if (quest_choose() == "delito") {
+        gp <- c(var_id[grep("mcpio|depto", var_id)], "total", "delitos")
+
         if (input$variables_principales == "delitos") {
         df <- df %>%
-          dplyr::group_by(depto) %>%
+          dplyr::group_by(mcpio, depto) %>%
           dplyr::summarise(total = sum(total),
                            delitos = paste0(unique(delito), collapse = "<br/>"))
+      
         } else {
           df <- df %>%
-            dplyr::group_by(depto) %>%
+            dplyr::group_by(mcpio, depto) %>%
             dplyr::summarise(total = sum(total),
                              delitos = paste0(unique(irregularidades), collapse = "<br/>")) 
+         
         }
+        df <- df[,gp]
+
+        if (input$departamentos != "Todos") {
+          id_depto <- grep("depto", names(df))
+         df <- df[,-id_depto]
+        }
+
       }
     }
     
@@ -567,9 +591,12 @@ server <- function(input, output, session) {
        df <- df[,-2]
       }
     }
-    
-    #print(df)
+
     df
+    },
+    error = function(cond) {
+      return()
+    })
   })
   
   
@@ -598,10 +625,10 @@ server <- function(input, output, session) {
   })
   
   gen_viz <- reactive({
+    tryCatch({
     if (nrow(data_viz()) == 0) return()
     if (is.null(input$departamentos)) return()
-    #print(data_viz())
-    #print(quest_choose())
+
     if (actual_but$active == "map") {
       num_zoom <- 5
       
@@ -616,16 +643,17 @@ server <- function(input, output, session) {
         id_map_name <- paste0("col_depto_", id_depto)
         num_zoom <- 7
       }
-      
+  
       agg_opt <- "mean"
       if ("total" %in% names(data_viz())) agg_opt <- "sum"
-      #print(data_viz())
+
       lf <- do.call("lflt_choropleth_GnmNum", 
                     list(
                       data = data_viz(),
                       map_name = id_map_name,
                       palette_colors =  c("#f9c74f","#ee9b00", "#ca6702", "#bb3e03", "#ae2012", "#9b2226"),
-                      map_tiles = "Esri.WorldStreetMap",
+                      #map_tiles = "Esri.WorldStreetMap",
+                      background_color = "#ffffff",
                       agg = agg_opt,
                       tooltip = tooltip_info(),
                       legend_position = "bottomleft",
@@ -660,12 +688,15 @@ server <- function(input, output, session) {
                              order = order_year,
                              hor_title = " ", #reactivo porque depende de los datos
                              palette_colors = c("#0a4a83", "#0ebabe", "#eb5d0b", "#f4b72f", "#27a864")))
-    }
+    
+    }},
+    error = function(cond) {
+      return()
+    })
   })
   
   output$table_view <- renderDataTable({
-    #print(actual_but$active)
-    #print( data_filter())
+
     req(data_filter())
   
     df <- data_filter()
@@ -839,7 +870,7 @@ server <- function(input, output, session) {
   observe({
     if (is.null(data_relacion_filter())) return()
     df <- data_relacion_filter()
-    #print(df)
+
     leafletProxy("map_lflt", data = df) %>%
       clearMarkers() %>%
       addCircleMarkers(
